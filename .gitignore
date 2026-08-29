@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+*.log
+uploads/
+estructura.md
+plan_de_pruebas.md
