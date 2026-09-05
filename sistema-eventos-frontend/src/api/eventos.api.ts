@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { EstadoEvento } from "../types/enums";
 import type { Evento, ResumenEvento } from "../types/entities";
 
 export interface CrearEventoPayload {
@@ -14,7 +15,7 @@ export interface CrearEventoPayload {
   dias_anticipacion_recordatorio?: number;
 }
 
-export type ActualizarEventoPayload = Partial<CrearEventoPayload>;
+export type ActualizarEventoPayload = Partial<CrearEventoPayload> & { estado?: EstadoEvento };
 
 export function listar() {
   return apiFetch<Evento[]>("/eventos");

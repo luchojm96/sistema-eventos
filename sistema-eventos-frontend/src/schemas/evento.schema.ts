@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { numeroOpcional } from "./shared";
+import { numeroOpcional, textoOpcional } from "./shared";
+
+// "Cancelado" queda afuera a propósito: esa transición tiene su propio botón/endpoint
+// ("Cancelar evento"), con reglas de negocio propias, no se setea desde este formulario.
+export const ESTADOS_EDITABLES = ["Planificado", "Confirmado", "En curso", "Finalizado"] as const;
 
 export const eventoSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -10,8 +14,9 @@ export const eventoSchema = z.object({
   ubicacion: z.string().min(2, "La ubicación debe tener al menos 2 caracteres"),
   capacidad_estimada: numeroOpcional(z.number().int().min(0)),
   presupuesto_estimado: numeroOpcional(z.number().min(0)),
-  descripcion: z.string().optional(),
+  descripcion: textoOpcional(z.string()),
   dias_anticipacion_recordatorio: numeroOpcional(z.number().int().min(0)),
+  estado: textoOpcional(z.enum(ESTADOS_EDITABLES)),
 });
 
 // El schema usa coerce/preprocess (selects e inputs numéricos llegan como string),

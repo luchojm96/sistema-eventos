@@ -11,6 +11,7 @@ import { EstadoConfirmacionInvitado } from "../entities/enums";
 import { Evento } from "../entities/Evento";
 import { Invitado } from "../entities/Invitado";
 import { FilaInvitado } from "../utils/importInvitados";
+import { verificarEventoActivo } from "../utils/verificarEventoActivo";
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 
@@ -73,6 +74,7 @@ export class InvitadoService {
   async crear(idEvento: number, idClienteSolicitante: number, datos: CrearInvitadoInput): Promise<Invitado> {
     const evento = await obtenerEventoOFallar(idEvento);
     verificarPropiedad(evento, idClienteSolicitante);
+    verificarEventoActivo(evento);
 
     const invitado = invitadoRepository().create({
       ...datos,
@@ -92,6 +94,7 @@ export class InvitadoService {
   ): Promise<Invitado[]> {
     const evento = await obtenerEventoOFallar(idEvento);
     verificarPropiedad(evento, idClienteSolicitante);
+    verificarEventoActivo(evento);
 
     const creados: Invitado[] = [];
     for (const fila of filas) {
@@ -118,6 +121,7 @@ export class InvitadoService {
       throw new AppError("Invitado no encontrado", 404);
     }
     verificarPropiedad(invitado.evento, idClienteSolicitante);
+    verificarEventoActivo(invitado.evento);
 
     Object.assign(invitado, datos);
     return invitadoRepository().save(invitado);
@@ -129,6 +133,7 @@ export class InvitadoService {
       throw new AppError("Invitado no encontrado", 404);
     }
     verificarPropiedad(invitado.evento, idClienteSolicitante);
+    verificarEventoActivo(invitado.evento);
 
     await invitadoRepository().remove(invitado);
   }
@@ -139,6 +144,7 @@ export class InvitadoService {
       throw new AppError("Invitado no encontrado", 404);
     }
     verificarPropiedad(invitado.evento, idClienteSolicitante);
+    verificarEventoActivo(invitado.evento);
 
     await enviarInvitacion(invitado, invitado.evento);
     return invitado;

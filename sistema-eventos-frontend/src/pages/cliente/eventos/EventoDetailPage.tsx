@@ -54,6 +54,7 @@ export function EventoDetailPage() {
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
   const [modalNuevoPago, setModalNuevoPago] = useState(false);
+  const [reporteRefreshKey, setReporteRefreshKey] = useState(0);
 
   function limpiarMensajes() {
     setMensajeAccion(null);
@@ -107,6 +108,10 @@ export function EventoDetailPage() {
   if (error) return <p className="p-8 text-sm text-red-600">{error}</p>;
   if (!evento) return null;
 
+  const hayPlanDefinido = !!cuotas && cuotas.length > 0;
+  const planCompletamentePagado = hayPlanDefinido && cuotas!.every((cuota) => cuota.pagada);
+  const puedeGestionar = evento.estado !== "Cancelado" && evento.estado !== "Finalizado";
+
   return (
     <div className="mx-auto max-w-4xl p-8">
       <div className="flex items-start justify-between">
@@ -134,12 +139,21 @@ export function EventoDetailPage() {
               className="hidden"
               onChange={handleImportar}
             />
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={importando}>
+            <Button
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importando || !puedeGestionar}
+            >
               {importando ? "Importando..." : "Importar CSV/XLSX"}
             </Button>
-            <Button onClick={() => setModal("nuevo")}>Agregar invitado</Button>
+            <Button onClick={() => setModal("nuevo")} disabled={!puedeGestionar}>
+              Agregar invitado
+            </Button>
           </div>
         </div>
+        {!puedeGestionar && (
+          <p className="mt-1 text-xs text-slate-500">El evento está {evento.estado.toLowerCase()}.</p>
+        )}
 
         {mensajeAccion && <p className="mt-3 text-sm text-green-700">{mensajeAccion}</p>}
         {errorAccion && <p className="mt-3 text-sm text-red-600">{errorAccion}</p>}
@@ -150,27 +164,32 @@ export function EventoDetailPage() {
           {invitados && (
             <InvitadosTable
               invitados={invitados}
-              renderAcciones={(invitado) => (
-                <div className="flex justify-end gap-3 text-sm">
-                  {invitado.email && invitado.estado_confirmacion === "Pendiente" && (
+              renderAcciones={(invitado) =>
+                puedeGestionar ? (
+                  <div className="flex justify-end gap-3 text-sm">
+                    {invitado.email && invitado.estado_confirmacion === "Pendiente" && (
+                      <button
+                        className="font-medium text-slate-600 hover:underline"
+                        onClick={() => handleReenviar(invitado)}
+                      >
+                        Reenviar
+                      </button>
+                    )}
                     <button
                       className="font-medium text-slate-600 hover:underline"
-                      onClick={() => handleReenviar(invitado)}
+                      onClick={() => setModal(invitado)}
                     >
-                      Reenviar
+                      Editar
                     </button>
-                  )}
-                  <button className="font-medium text-slate-600 hover:underline" onClick={() => setModal(invitado)}>
-                    Editar
-                  </button>
-                  <button
-                    className="font-medium text-red-600 hover:underline"
-                    onClick={() => setInvitadoAEliminar(invitado)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              )}
+                    <button
+                      className="font-medium text-red-600 hover:underline"
+                      onClick={() => setInvitadoAEliminar(invitado)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ) : null
+              }
             />
           )}
         </div>
@@ -198,15 +217,24 @@ export function EventoDetailPage() {
       <section className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Mis pagos</h2>
-          <Button onClick={() => setModalNuevoPago(true)}>Registrar pago</Button>
+          <Button onClick={() => setModalNuevoPago(true)} disabled={planCompletamentePagado || !puedeGestionar}>
+            Registrar pago
+          </Button>
         </div>
+        {!puedeGestionar ? (
+          <p className="mt-1 text-xs text-slate-500">El evento está {evento.estado.toLowerCase()}.</p>
+        ) : (
+          planCompletamentePagado && (
+            <p className="mt-1 text-xs text-slate-500">El plan de pagos ya está completamente saldado.</p>
+          )
+        )}
         <div className="mt-3">
           {cargandoPagosCliente && <p className="text-sm text-slate-500">Cargando...</p>}
           {pagosCliente && <PagosClienteTable pagos={pagosCliente} />}
         </div>
       </section>
 
-      <ReporteEventoSection idEvento={eventoId} />
+      <ReporteEventoSection idEvento={eventoId} refreshKey={reporteRefreshKey} />
 
       <div className="mt-6">
         <Link to="/cliente/mis-eventos">
@@ -252,6 +280,7 @@ export function EventoDetailPage() {
             setModalNuevoPago(false);
             refetchCuotas();
             refetchPagosCliente();
+            setReporteRefreshKey((key) => key + 1);
           }}
         />
       )}

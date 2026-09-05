@@ -13,6 +13,10 @@ function rutaInicioPorRol(user: Usuario) {
   return user.rol === "administrador" ? "/admin/dashboard" : "/cliente/mis-eventos";
 }
 
+function prefijoPorRol(user: Usuario) {
+  return user.rol === "administrador" ? "/admin" : "/cliente";
+}
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -29,7 +33,11 @@ export function LoginPage() {
     setErrorServidor(null);
     try {
       const user = await login(values.email, values.password);
-      const destino = (location.state as { from?: string } | null)?.from ?? rutaInicioPorRol(user);
+      // "from" puede venir de una sesión anterior con otro rol (ej. quedó guardado en el
+      // historial al cerrar sesión como Administrador) — solo se reutiliza si pertenece
+      // al área del rol que acaba de iniciar sesión, si no se ignora.
+      const from = (location.state as { from?: string } | null)?.from;
+      const destino = from && from.startsWith(prefijoPorRol(user)) ? from : rutaInicioPorRol(user);
       navigate(destino, { replace: true });
     } catch (error) {
       setErrorServidor(error instanceof ApiError ? error.message : "No se pudo iniciar sesión");

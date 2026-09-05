@@ -1,7 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
-// El backend sirve los comprobantes subidos como archivos estáticos en su
-// origen (no bajo /api) — se usa para armar el link de descarga completo.
 export const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 
 export class ApiError extends Error {
@@ -19,11 +17,6 @@ interface RequestOptions {
   isFormData?: boolean;
 }
 
-/**
- * Wrapper sobre fetch: agrega credentials:'include' (cookie httpOnly del
- * backend), serializa el body a JSON salvo que sea multipart (isFormData),
- * y normaliza los errores del backend ({ message }) en ApiError.
- */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, isFormData = false } = options;
 

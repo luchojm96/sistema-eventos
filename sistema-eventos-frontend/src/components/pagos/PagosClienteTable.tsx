@@ -35,7 +35,7 @@ export function PagosClienteTable({ pagos, renderAcciones }: Props) {
           {pagos.map((pago) => (
             <tr key={pago.id} className="hover:bg-slate-50">
               <td className="px-4 py-3 text-slate-600">{pago.fecha_pago}</td>
-              <td className="px-4 py-3 font-medium text-slate-900">${pago.monto}</td>
+              <td className="px-4 py-3 font-medium text-slate-900">Bs {pago.monto}</td>
               <td className="px-4 py-3 text-slate-600">{pago.metodo_pago}</td>
               <td className="px-4 py-3 text-slate-600">{pago.registrado_por}</td>
               <td className="px-4 py-3">

@@ -4,6 +4,7 @@ import { planPagoRepository } from "../repositories/planPago.repository";
 import { AppError } from "../utils/AppError";
 import { EstadoPagoCliente, MetodoPago, RegistradoPor } from "../entities/enums";
 import { Rol } from "../types/auth.types";
+import { verificarEventoActivo } from "../utils/verificarEventoActivo";
 
 interface RegistrarPagoInput {
   id_cuota?: number;
@@ -41,6 +42,7 @@ export class PagoClienteService {
   async registrar(idEvento: number, actorRol: Rol, actorId: number, datos: RegistrarPagoInput) {
     const evento = await obtenerEventoOFallar(idEvento);
     verificarAcceso(evento.id_cliente, actorRol, actorId);
+    verificarEventoActivo(evento);
 
     if (datos.id_cuota !== undefined) {
       const cuota = await planPagoRepository().findOneBy({ id: datos.id_cuota, id_evento: idEvento });
@@ -68,6 +70,8 @@ export class PagoClienteService {
     if (!pago) {
       throw new AppError("Pago no encontrado", 404);
     }
+    const evento = await obtenerEventoOFallar(pago.id_evento);
+    verificarEventoActivo(evento);
     if (pago.estado !== EstadoPagoCliente.REPORTADO) {
       throw new AppError("Solo se pueden validar pagos en estado Reportado", 400);
     }

@@ -21,6 +21,7 @@ import { PagoClienteFormModal } from "../../../components/pagos/PagoClienteFormM
 import { ReporteEventoSection } from "../../../components/reportes/ReporteEventoSection";
 import { ContratacionFormModal } from "./ContratacionFormModal";
 import { PlanPagoFormModal } from "./PlanPagoFormModal";
+import { AgregarCuotaModal } from "./AgregarCuotaModal";
 import { CuotaEditModal } from "./CuotaEditModal";
 import { EgresoFormModal } from "./EgresoFormModal";
 import { COLOR_ESTADO_EVENTO } from "../../../utils/estadoEvento";
@@ -65,10 +66,16 @@ export function EventoDetailPage() {
   const [cancelandoContratacion, setCancelandoContratacion] = useState(false);
   const [errorContratacion, setErrorContratacion] = useState<string | null>(null);
   const [modalPlanPago, setModalPlanPago] = useState(false);
+  const [modalAgregarCuota, setModalAgregarCuota] = useState(false);
   const [cuotaAEditar, setCuotaAEditar] = useState<PlanPago | null>(null);
   const [modalNuevoPago, setModalNuevoPago] = useState(false);
   const [modalNuevoEgreso, setModalNuevoEgreso] = useState(false);
   const [errorValidarPago, setErrorValidarPago] = useState<string | null>(null);
+  const [reporteRefreshKey, setReporteRefreshKey] = useState(0);
+
+  function refrescarReportes() {
+    setReporteRefreshKey((key) => key + 1);
+  }
 
   async function handleCancelar() {
     setErrorCancelar(null);
@@ -89,6 +96,7 @@ export function EventoDetailPage() {
     refetchCuotas();
     refetchPagosCliente();
     refetchResumen();
+    refrescarReportes();
   }
 
   async function handleValidarPago(pago: PagoCliente, decision: "Validado" | "Rechazado") {
@@ -120,8 +128,38 @@ export function EventoDetailPage() {
   if (error) return <p className="p-8 text-sm text-red-600">{error}</p>;
   if (!evento) return null;
 
-  const puedeGestionar = evento.estado !== "Cancelado";
+  const puedeGestionar = evento.estado !== "Cancelado" && evento.estado !== "Finalizado";
   const proveedoresActivos = (proveedores ?? []).filter((proveedor) => proveedor.activo);
+
+  const hayPlanDefinido = !!cuotas && cuotas.length > 0;
+  const planCompletamentePagado = hayPlanDefinido && cuotas!.every((cuota) => cuota.pagada);
+
+  // El plan de pagos no puede superar el presupuesto estimado del evento (si tiene uno
+  // definido) — cada cuota nueva/editada queda topeada a lo que todavía queda disponible.
+  const presupuestoEvento = evento.presupuesto_estimado != null ? Number(evento.presupuesto_estimado) : null;
+  const totalCuotas = (cuotas ?? []).reduce((total, cuota) => total + Number(cuota.monto), 0);
+  const presupuestoDisponibleParaNuevaCuota = presupuestoEvento != null ? presupuestoEvento - totalCuotas : null;
+  const presupuestoDisponibleParaEdicion =
+    presupuestoEvento != null && cuotaAEditar != null
+      ? presupuestoEvento - totalCuotas + Number(cuotaAEditar.monto)
+      : null;
+
+  const contratacionesActivas = (contrataciones ?? []).filter((c) => c.estado_contrato !== "Cancelado");
+  const egresosCompletamenteSaldados =
+    contrataciones !== null && contratacionesActivas.every((c) => c.estado_contrato === "Pagado");
+
+  // Asistencia estimada: invitados confirmados más los acompañantes que confirmaron
+  // (los pendientes/rechazados no suman porque todavía no se sabe cuántos van a asistir).
+  const asistentesConfirmados = (invitados ?? []).reduce(
+    (total, invitado) =>
+      total + (invitado.estado_confirmacion === "Confirmado" ? 1 + (invitado.acompanantes_confirmados ?? 0) : 0),
+    0,
+  );
+  const acompanantesConfirmados = (invitados ?? []).reduce(
+    (total, invitado) =>
+      total + (invitado.estado_confirmacion === "Confirmado" ? invitado.acompanantes_confirmados ?? 0 : 0),
+    0,
+  );
 
   return (
     <div className="mx-auto max-w-3xl p-8">
@@ -144,12 +182,17 @@ export function EventoDetailPage() {
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500">Capacidad estimada</dt>
-          <dd className="text-slate-900">{evento.capacidad_estimada ?? "—"}</dd>
+          <dt className="text-slate-500">Capacidad (confirmados)</dt>
+          <dd className="text-slate-900">
+            {asistentesConfirmados}
+            {evento.capacidad_estimada != null ? ` / ${evento.capacidad_estimada}` : ""}
+          </dd>
         </div>
         <div>
           <dt className="text-slate-500">Presupuesto estimado</dt>
-          <dd className="text-slate-900">{evento.presupuesto_estimado ?? "—"}</dd>
+          <dd className="text-slate-900">
+            {evento.presupuesto_estimado != null ? `Bs ${evento.presupuesto_estimado}` : "—"}
+          </dd>
         </div>
         <div>
           <dt className="text-slate-500">Días anticipación RSVP</dt>
@@ -172,6 +215,7 @@ export function EventoDetailPage() {
               {resumen.invitados.confirmados} confirmados · {resumen.invitados.pendientes} pendientes ·{" "}
               {resumen.invitados.rechazados} rechazados
             </p>
+            <p className="text-xs text-slate-500">{acompanantesConfirmados} acompañantes confirmados</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-xs uppercase text-slate-500">Proveedores contratados</p>
@@ -179,7 +223,7 @@ export function EventoDetailPage() {
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-xs uppercase text-slate-500">Total pagado (validado)</p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">${resumen.pagos.totalValidado}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">Bs {resumen.pagos.totalValidado}</p>
           </div>
         </div>
       )}
@@ -198,8 +242,13 @@ export function EventoDetailPage() {
       <div className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Proveedores contratados</h2>
-          <Button onClick={() => setModalContratacion("nueva")}>Contratar proveedor</Button>
+          <Button onClick={() => setModalContratacion("nueva")} disabled={!puedeGestionar}>
+            Contratar proveedor
+          </Button>
         </div>
+        {!puedeGestionar && (
+          <p className="mt-1 text-xs text-slate-500">El evento está {evento.estado.toLowerCase()}.</p>
+        )}
 
         {errorContratacion && <p className="mt-3 text-sm text-red-600">{errorContratacion}</p>}
 
@@ -209,7 +258,8 @@ export function EventoDetailPage() {
             <ContratacionesTable
               contrataciones={contrataciones}
               renderAcciones={(contratacion) =>
-                contratacion.estado_contrato === "Cotizado" || contratacion.estado_contrato === "Contratado" ? (
+                puedeGestionar &&
+                (contratacion.estado_contrato === "Cotizado" || contratacion.estado_contrato === "Contratado") ? (
                   <div className="flex justify-end gap-3 text-sm">
                     <button
                       className="font-medium text-slate-600 hover:underline"
@@ -234,18 +284,34 @@ export function EventoDetailPage() {
       <div className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Plan de pagos</h2>
-          {(!cuotas || cuotas.length === 0) && <Button onClick={() => setModalPlanPago(true)}>Definir plan</Button>}
+          {hayPlanDefinido ? (
+            <Button onClick={() => setModalAgregarCuota(true)} disabled={!puedeGestionar}>
+              Agregar cuota
+            </Button>
+          ) : (
+            <Button onClick={() => setModalPlanPago(true)} disabled={!puedeGestionar}>
+              Definir plan
+            </Button>
+          )}
         </div>
+        {!puedeGestionar && (
+          <p className="mt-1 text-xs text-slate-500">El evento está {evento.estado.toLowerCase()}.</p>
+        )}
         <div className="mt-3">
           {cargandoCuotas && <p className="text-sm text-slate-500">Cargando...</p>}
           {cuotas && (
             <PlanPagosTable
               cuotas={cuotas}
-              renderAcciones={(cuota) => (
-                <button className="font-medium text-slate-600 hover:underline" onClick={() => setCuotaAEditar(cuota)}>
-                  Editar
-                </button>
-              )}
+              renderAcciones={(cuota) =>
+                puedeGestionar ? (
+                  <button
+                    className="font-medium text-slate-600 hover:underline"
+                    onClick={() => setCuotaAEditar(cuota)}
+                  >
+                    Editar
+                  </button>
+                ) : null
+              }
             />
           )}
         </div>
@@ -254,8 +320,17 @@ export function EventoDetailPage() {
       <div className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Ingresos (pagos del Cliente)</h2>
-          <Button onClick={() => setModalNuevoPago(true)}>Registrar pago</Button>
+          <Button onClick={() => setModalNuevoPago(true)} disabled={planCompletamentePagado || !puedeGestionar}>
+            Registrar pago
+          </Button>
         </div>
+        {!puedeGestionar ? (
+          <p className="mt-1 text-xs text-slate-500">El evento está {evento.estado.toLowerCase()}.</p>
+        ) : (
+          planCompletamentePagado && (
+            <p className="mt-1 text-xs text-slate-500">El plan de pagos ya está completamente saldado.</p>
+          )
+        )}
         {errorValidarPago && <p className="mt-3 text-sm text-red-600">{errorValidarPago}</p>}
         <div className="mt-3">
           {cargandoPagosCliente && <p className="text-sm text-slate-500">Cargando...</p>}
@@ -263,7 +338,7 @@ export function EventoDetailPage() {
             <PagosClienteTable
               pagos={pagosCliente}
               renderAcciones={(pago) =>
-                pago.estado === "Reportado" ? (
+                puedeGestionar && pago.estado === "Reportado" ? (
                   <div className="flex justify-end gap-3 text-sm">
                     <button
                       className="font-medium text-slate-600 hover:underline"
@@ -288,15 +363,27 @@ export function EventoDetailPage() {
       <div className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Egresos (pagos a proveedores)</h2>
-          <Button onClick={() => setModalNuevoEgreso(true)}>Registrar egreso</Button>
+          <Button
+            onClick={() => setModalNuevoEgreso(true)}
+            disabled={egresosCompletamenteSaldados || !puedeGestionar}
+          >
+            Registrar egreso
+          </Button>
         </div>
+        {!puedeGestionar ? (
+          <p className="mt-1 text-xs text-slate-500">El evento está {evento.estado.toLowerCase()}.</p>
+        ) : (
+          egresosCompletamenteSaldados && (
+            <p className="mt-1 text-xs text-slate-500">No hay contrataciones con saldo pendiente.</p>
+          )
+        )}
         <div className="mt-3">
           {cargandoEgresos && <p className="text-sm text-slate-500">Cargando...</p>}
           {egresos && <PagosProveedorTable pagos={egresos} />}
         </div>
       </div>
 
-      <ReporteEventoSection idEvento={eventoId} />
+      <ReporteEventoSection idEvento={eventoId} refreshKey={reporteRefreshKey} />
 
       {errorCancelar && <p className="mt-4 text-sm text-red-600">{errorCancelar}</p>}
 
@@ -321,6 +408,7 @@ export function EventoDetailPage() {
           idEvento={eventoId}
           proveedoresActivos={proveedoresActivos}
           contratacion={modalContratacion === "nueva" ? null : modalContratacion}
+          fechaEventoInicio={evento.fecha_inicio}
           onClose={() => setModalContratacion(null)}
           onGuardado={() => {
             setModalContratacion(null);
@@ -350,10 +438,25 @@ export function EventoDetailPage() {
       {modalPlanPago && (
         <PlanPagoFormModal
           idEvento={eventoId}
+          presupuesto={presupuestoEvento}
           onClose={() => setModalPlanPago(false)}
           onGuardado={() => {
             setModalPlanPago(false);
             refetchCuotas();
+            refrescarReportes();
+          }}
+        />
+      )}
+
+      {modalAgregarCuota && (
+        <AgregarCuotaModal
+          idEvento={eventoId}
+          presupuestoDisponible={presupuestoDisponibleParaNuevaCuota}
+          onClose={() => setModalAgregarCuota(false)}
+          onGuardado={() => {
+            setModalAgregarCuota(false);
+            refetchCuotas();
+            refrescarReportes();
           }}
         />
       )}
@@ -361,10 +464,12 @@ export function EventoDetailPage() {
       {cuotaAEditar && (
         <CuotaEditModal
           cuota={cuotaAEditar}
+          presupuestoDisponible={presupuestoDisponibleParaEdicion}
           onClose={() => setCuotaAEditar(null)}
           onGuardado={() => {
             setCuotaAEditar(null);
             refetchCuotas();
+            refrescarReportes();
           }}
         />
       )}
@@ -384,12 +489,14 @@ export function EventoDetailPage() {
       {modalNuevoEgreso && (
         <EgresoFormModal
           idEvento={eventoId}
-          contrataciones={(contrataciones ?? []).filter((c) => c.estado_contrato !== "Cancelado")}
+          contrataciones={contratacionesActivas}
+          egresos={egresos ?? []}
           onClose={() => setModalNuevoEgreso(false)}
           onGuardado={() => {
             setModalNuevoEgreso(false);
             refetchEgresos();
             refetchProveedoresYResumen();
+            refrescarReportes();
           }}
         />
       )}

@@ -1,14 +1,21 @@
 import { useApiData } from "../../hooks/useApiData";
 import * as reportesApi from "../../api/reportes.api";
 
-export function ReporteEventoSection({ idEvento }: { idEvento: number }) {
+interface Props {
+  idEvento: number;
+  // Se incrementa desde el padre cada vez que algo que afecta a estos números
+  // cambia (plan de pagos, ingresos, egresos, invitados) para forzar el refetch.
+  refreshKey?: number;
+}
+
+export function ReporteEventoSection({ idEvento, refreshKey = 0 }: Props) {
   const { data: asistencia, loading: cargandoAsistencia } = useApiData(
     () => reportesApi.asistencia(idEvento),
-    [idEvento],
+    [idEvento, refreshKey],
   );
   const { data: financiero, loading: cargandoFinanciero } = useApiData(
     () => reportesApi.financiero(idEvento),
-    [idEvento],
+    [idEvento, refreshKey],
   );
 
   return (
@@ -39,13 +46,13 @@ export function ReporteEventoSection({ idEvento }: { idEvento: number }) {
           {financiero && (
             <dl className="mt-2 grid grid-cols-2 gap-y-2 text-sm">
               <dt className="text-slate-500">Total del plan</dt>
-              <dd className="text-right text-slate-900">${financiero.ingresos.totalPlan}</dd>
+              <dd className="text-right text-slate-900">Bs {financiero.ingresos.totalPlan}</dd>
               <dt className="text-slate-500">Validado</dt>
-              <dd className="text-right text-slate-900">${financiero.ingresos.totalValidado}</dd>
+              <dd className="text-right text-slate-900">Bs {financiero.ingresos.totalValidado}</dd>
               <dt className="text-slate-500">Reportado (sin validar)</dt>
-              <dd className="text-right text-slate-900">${financiero.ingresos.totalReportadoPendienteValidacion}</dd>
+              <dd className="text-right text-slate-900">Bs {financiero.ingresos.totalReportadoPendienteValidacion}</dd>
               <dt className="text-slate-500">Saldo pendiente</dt>
-              <dd className="text-right text-slate-900">${financiero.ingresos.saldoPendiente}</dd>
+              <dd className="text-right text-slate-900">Bs {financiero.ingresos.saldoPendiente}</dd>
             </dl>
           )}
         </div>
@@ -55,11 +62,11 @@ export function ReporteEventoSection({ idEvento }: { idEvento: number }) {
             <h3 className="text-sm font-semibold text-slate-900">Financiero — Egresos</h3>
             <dl className="mt-2 grid grid-cols-2 gap-y-2 text-sm">
               <dt className="text-slate-500">Costo acordado total</dt>
-              <dd className="text-right text-slate-900">${financiero.egresos.totalCostoAcordado}</dd>
+              <dd className="text-right text-slate-900">Bs {financiero.egresos.totalCostoAcordado}</dd>
               <dt className="text-slate-500">Pagado</dt>
-              <dd className="text-right text-slate-900">${financiero.egresos.totalPagado}</dd>
+              <dd className="text-right text-slate-900">Bs {financiero.egresos.totalPagado}</dd>
               <dt className="text-slate-500">Saldo pendiente</dt>
-              <dd className="text-right text-slate-900">${financiero.egresos.saldoPendiente}</dd>
+              <dd className="text-right text-slate-900">Bs {financiero.egresos.saldoPendiente}</dd>
             </dl>
           </div>
         )}
@@ -67,7 +74,7 @@ export function ReporteEventoSection({ idEvento }: { idEvento: number }) {
         {financiero?.rentabilidad !== undefined && (
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold text-slate-900">Rentabilidad</h3>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">${financiero.rentabilidad}</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">Bs {financiero.rentabilidad}</p>
             <p className="mt-1 text-xs text-slate-500">Ingresos validados − egresos a proveedores.</p>
           </div>
         )}

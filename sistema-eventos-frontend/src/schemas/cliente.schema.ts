@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { textoOpcional } from "./shared";
 
 export const clientePerfilSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  telefono: z.string().optional(),
+  telefono: textoOpcional(z.string()),
 });
 
 export type ClientePerfilFormValues = z.infer<typeof clientePerfilSchema>;

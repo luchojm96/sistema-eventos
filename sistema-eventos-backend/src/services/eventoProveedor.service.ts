@@ -3,6 +3,7 @@ import { eventoRepository } from "../repositories/evento.repository";
 import { proveedorRepository } from "../repositories/proveedor.repository";
 import { AppError } from "../utils/AppError";
 import { EstadoContrato } from "../entities/enums";
+import { verificarEventoActivo } from "../utils/verificarEventoActivo";
 
 interface ContratacionInput {
   id_proveedor: number;
@@ -26,6 +27,12 @@ export class EventoProveedorService {
   }
 
   async contratar(idEvento: number, datos: ContratacionInput) {
+    const evento = await eventoRepository().findOneBy({ id: idEvento });
+    if (!evento) {
+      throw new AppError("Evento no encontrado", 404);
+    }
+    verificarEventoActivo(evento);
+
     const proveedor = await proveedorRepository().findOneBy({ id: datos.id_proveedor });
     if (!proveedor) {
       throw new AppError("Proveedor no encontrado", 404);
@@ -53,6 +60,7 @@ export class EventoProveedorService {
 
   async actualizar(id: number, datos: ActualizarContratacionInput) {
     const contratacion = await this.obtenerContratacion(id);
+    await this.verificarEventoDeContratacionActivo(contratacion.id_evento);
     if (datos.estado_contrato === EstadoContrato.PAGADO) {
       throw new AppError("El estado Pagado se calcula automáticamente a partir de los pagos registrados", 400);
     }
@@ -66,7 +74,16 @@ export class EventoProveedorService {
 
   async cancelar(id: number) {
     const contratacion = await this.obtenerContratacion(id);
+    await this.verificarEventoDeContratacionActivo(contratacion.id_evento);
     contratacion.estado_contrato = EstadoContrato.CANCELADO;
     return eventoProveedorRepository().save(contratacion);
+  }
+
+  private async verificarEventoDeContratacionActivo(idEvento: number) {
+    const evento = await eventoRepository().findOneBy({ id: idEvento });
+    if (!evento) {
+      throw new AppError("Evento no encontrado", 404);
+    }
+    verificarEventoActivo(evento);
   }
 }

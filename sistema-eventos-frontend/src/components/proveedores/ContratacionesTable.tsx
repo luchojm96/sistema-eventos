@@ -40,7 +40,7 @@ export function ContratacionesTable({ contrataciones, renderAcciones }: Props) {
                 {contratacion.descripcion_servicio ?? "—"}
                 {contratacion.cantidad ? ` · x${contratacion.cantidad}` : ""}
               </td>
-              <td className="px-4 py-3 text-slate-600">${contratacion.costo_acordado}</td>
+              <td className="px-4 py-3 text-slate-600">Bs {contratacion.costo_acordado}</td>
               <td className="px-4 py-3 text-slate-600">
                 {contratacion.fecha_servicio}
                 {contratacion.hora_inicio ? ` ${contratacion.hora_inicio}` : ""}

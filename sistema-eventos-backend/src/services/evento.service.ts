@@ -58,8 +58,8 @@ export class EventoService {
 
   async actualizar(id: number, datos: ActualizarEventoInput) {
     const evento = await this.obtenerPorId(id);
-    if (evento.estado === EstadoEvento.CANCELADO) {
-      throw new AppError("No se puede modificar un evento cancelado", 400);
+    if (evento.estado === EstadoEvento.CANCELADO || evento.estado === EstadoEvento.FINALIZADO) {
+      throw new AppError(`No se puede modificar un evento en estado ${evento.estado}`, 400);
     }
     if (datos.estado === EstadoEvento.CANCELADO) {
       throw new AppError("Usá el endpoint de cancelación para cancelar un evento", 400);

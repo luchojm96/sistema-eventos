@@ -5,7 +5,14 @@ import * as PagoProveedorController from "../controllers/pagoProveedor.controlle
 import { requireAuth, requireRole } from "../middlewares/auth.middleware";
 import { uploadComprobante } from "../middlewares/uploadComprobante.middleware";
 import { validateBody } from "../middlewares/validate.middleware";
-import { CrearPlanPagoDto, ActualizarCuotaDto, RegistrarPagoDto, ValidarPagoDto, RegistrarEgresoDto } from "../dtos/pago.dto";
+import {
+  CrearPlanPagoDto,
+  AgregarCuotaDto,
+  ActualizarCuotaDto,
+  RegistrarPagoDto,
+  ValidarPagoDto,
+  RegistrarEgresoDto,
+} from "../dtos/pago.dto";
 
 const router = Router();
 
@@ -76,6 +83,44 @@ router.post(
   requireRole("administrador"),
   validateBody(CrearPlanPagoDto),
   PlanPagoController.crear
+);
+
+/**
+ * @swagger
+ * /eventos/{id}/plan-pagos/cuotas:
+ *   post:
+ *     summary: Agrega una cuota nueva a un plan de pagos ya existente (numero_cuota se calcula automáticamente)
+ *     tags: [Pagos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [monto, fecha_limite]
+ *             properties:
+ *               monto: { type: number }
+ *               fecha_limite: { type: string, format: date }
+ *     responses:
+ *       201:
+ *         description: Cuota agregada
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/PlanPago' }
+ *       400: { description: "El evento todavía no tiene un plan de pagos definido" }
+ *       403: { description: No autorizado (solo Administrador) }
+ *       404: { description: Evento no encontrado }
+ */
+router.post(
+  "/eventos/:id/plan-pagos/cuotas",
+  requireRole("administrador"),
+  validateBody(AgregarCuotaDto),
+  PlanPagoController.agregarCuota
 );
 
 /**

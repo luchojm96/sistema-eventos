@@ -31,7 +31,7 @@ export function PlanPagosTable({ cuotas, renderAcciones }: Props) {
           {cuotas.map((cuota) => (
             <tr key={cuota.id} className="hover:bg-slate-50">
               <td className="px-4 py-3 font-medium text-slate-900">#{cuota.numero_cuota}</td>
-              <td className="px-4 py-3 text-slate-600">${cuota.monto}</td>
+              <td className="px-4 py-3 text-slate-600">Bs {cuota.monto}</td>
               <td className="px-4 py-3 text-slate-600">{cuota.fecha_limite}</td>
               <td className="px-4 py-3">
                 <Badge color={cuota.pagada ? "green" : "amber"}>{cuota.pagada ? "Pagada" : "Pendiente"}</Badge>

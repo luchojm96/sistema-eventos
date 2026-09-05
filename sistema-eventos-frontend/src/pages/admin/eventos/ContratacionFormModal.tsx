@@ -18,11 +18,19 @@ interface Props {
   idEvento: number;
   proveedoresActivos: Proveedor[];
   contratacion?: EventoProveedor | null;
+  fechaEventoInicio?: string;
   onClose: () => void;
   onGuardado: () => void;
 }
 
-export function ContratacionFormModal({ idEvento, proveedoresActivos, contratacion, onClose, onGuardado }: Props) {
+export function ContratacionFormModal({
+  idEvento,
+  proveedoresActivos,
+  contratacion,
+  fechaEventoInicio,
+  onClose,
+  onGuardado,
+}: Props) {
   const modoEdicion = Boolean(contratacion);
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
 
@@ -46,7 +54,11 @@ export function ContratacionFormModal({ idEvento, proveedoresActivos, contrataci
               ? contratacion.estado_contrato
               : undefined,
         }
-      : undefined,
+      : {
+          // Precarga la fecha de servicio con el día en que arranca el evento —
+          // el caso más común es contratar un proveedor para el día del evento.
+          fecha_servicio: fechaEventoInicio,
+        },
   });
 
   async function onSubmit(values: ContratacionFormValues) {

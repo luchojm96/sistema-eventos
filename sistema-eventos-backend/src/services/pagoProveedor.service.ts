@@ -3,6 +3,7 @@ import { eventoProveedorRepository } from "../repositories/eventoProveedor.repos
 import { eventoRepository } from "../repositories/evento.repository";
 import { AppError } from "../utils/AppError";
 import { EstadoContrato, MetodoPago } from "../entities/enums";
+import { verificarEventoActivo } from "../utils/verificarEventoActivo";
 
 interface RegistrarEgresoInput {
   id_evento_proveedor: number;
@@ -44,6 +45,12 @@ export class PagoProveedorService {
   }
 
   async registrar(idEvento: number, datos: RegistrarEgresoInput) {
+    const evento = await eventoRepository().findOneBy({ id: idEvento });
+    if (!evento) {
+      throw new AppError("Evento no encontrado", 404);
+    }
+    verificarEventoActivo(evento);
+
     const contratacion = await eventoProveedorRepository().findOneBy({
       id: datos.id_evento_proveedor,
       id_evento: idEvento,

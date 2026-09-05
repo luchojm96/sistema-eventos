@@ -26,7 +26,7 @@ export function PagosProveedorTable({ pagos }: { pagos: PagoProveedor[] }) {
                 {pago.eventoProveedor?.proveedor?.nombre_empresa ?? "—"}
               </td>
               <td className="px-4 py-3 text-slate-600">{pago.fecha_pago}</td>
-              <td className="px-4 py-3 text-slate-600">${pago.monto}</td>
+              <td className="px-4 py-3 text-slate-600">Bs {pago.monto}</td>
               <td className="px-4 py-3 text-slate-600">{pago.metodo_pago}</td>
             </tr>
           ))}

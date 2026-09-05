@@ -25,6 +25,11 @@ export class CrearPlanPagoDto {
   cuotas!: CuotaDto[];
 }
 
+export class AgregarCuotaDto {
+  @IsNumber() @IsPositive() monto!: number;
+  @IsDateString() fecha_limite!: string;
+}
+
 export class ActualizarCuotaDto {
   @IsOptional() @IsInt() @Min(1) numero_cuota?: number;
   @IsOptional() @IsNumber() @IsPositive() monto?: number;

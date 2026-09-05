@@ -7,7 +7,12 @@ import * as tiposEventoApi from "../../../api/tiposEvento.api";
 import * as clientesApi from "../../../api/clientes.api";
 import { useApiData } from "../../../hooks/useApiData";
 import { ApiError } from "../../../api/client";
-import { eventoSchema, type EventoFormInput, type EventoFormValues } from "../../../schemas/evento.schema";
+import {
+  ESTADOS_EDITABLES,
+  eventoSchema,
+  type EventoFormInput,
+  type EventoFormValues,
+} from "../../../schemas/evento.schema";
 import { TextField } from "../../../components/ui/TextField";
 import { Select } from "../../../components/ui/Select";
 import { Button } from "../../../components/ui/Button";
@@ -48,6 +53,7 @@ export function EventoFormPage() {
           presupuesto_estimado: evento.presupuesto_estimado ? Number(evento.presupuesto_estimado) : undefined,
           descripcion: evento.descripcion,
           dias_anticipacion_recordatorio: evento.dias_anticipacion_recordatorio,
+          estado: evento.estado === "Cancelado" ? undefined : evento.estado,
         });
       })
       .catch((err) => setErrorCarga(err instanceof ApiError ? err.message : "No se pudo cargar el evento"));
@@ -114,6 +120,21 @@ export function EventoFormPage() {
         </Select>
         {modoEdicion && (
           <p className="-mt-3 text-xs text-slate-500">El cliente de un evento no se puede reasignar.</p>
+        )}
+
+        {modoEdicion && (
+          <>
+            <Select label="Estado" error={errors.estado?.message} {...register("estado")}>
+              {ESTADOS_EDITABLES.map((estado) => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
+            </Select>
+            <p className="-mt-3 text-xs text-slate-500">
+              Para cancelar el evento usá el botón "Cancelar evento" en el detalle, no este campo.
+            </p>
+          </>
         )}
 
         <div className="grid grid-cols-2 gap-4">

@@ -4,6 +4,7 @@ import { eventoRepository } from "../repositories/evento.repository";
 import { AppError } from "../utils/AppError";
 import { EstadoPagoCliente } from "../entities/enums";
 import { Rol } from "../types/auth.types";
+import { verificarEventoActivo } from "../utils/verificarEventoActivo";
 
 interface CuotaInput {
   numero_cuota: number;
@@ -39,6 +40,7 @@ export class PlanPagoService {
     if (!evento) {
       throw new AppError("Evento no encontrado", 404);
     }
+    verificarEventoActivo(evento);
 
     const existentes = await planPagoRepository().countBy({ id_evento: idEvento });
     if (existentes > 0) {
@@ -52,6 +54,17 @@ export class PlanPagoService {
       throw new AppError("Debés enviar al menos una cuota", 400);
     }
 
+    if (evento.presupuesto_estimado != null) {
+      const totalPlan = cuotas.reduce((acc, cuota) => acc + Number(cuota.monto), 0);
+      const presupuesto = Number(evento.presupuesto_estimado);
+      if (totalPlan > presupuesto) {
+        throw new AppError(
+          `El total del plan (${totalPlan.toFixed(2)}) supera el presupuesto estimado del evento (${presupuesto.toFixed(2)})`,
+          400
+        );
+      }
+    }
+
     const nuevas = cuotas.map((cuota) =>
       planPagoRepository().create({
         id_evento: idEvento,
@@ -63,10 +76,67 @@ export class PlanPagoService {
     return planPagoRepository().save(nuevas);
   }
 
+  async agregarCuota(idEvento: number, datos: { monto: string | number; fecha_limite: string }) {
+    const evento = await eventoRepository().findOneBy({ id: idEvento });
+    if (!evento) {
+      throw new AppError("Evento no encontrado", 404);
+    }
+    verificarEventoActivo(evento);
+
+    const cuotas = await planPagoRepository().find({ where: { id_evento: idEvento } });
+    if (cuotas.length === 0) {
+      throw new AppError("Este evento todavía no tiene un plan de pagos definido. Definilo primero.", 400);
+    }
+
+    if (evento.presupuesto_estimado != null) {
+      const totalActual = cuotas.reduce((acc, cuota) => acc + Number(cuota.monto), 0);
+      const presupuesto = Number(evento.presupuesto_estimado);
+      const disponible = presupuesto - totalActual;
+      if (Number(datos.monto) > disponible) {
+        throw new AppError(
+          `El monto (${Number(datos.monto).toFixed(2)}) supera el presupuesto disponible (${disponible.toFixed(2)})`,
+          400
+        );
+      }
+    }
+
+    const siguienteNumero = Math.max(...cuotas.map((c) => c.numero_cuota)) + 1;
+    const nueva = planPagoRepository().create({
+      id_evento: idEvento,
+      numero_cuota: siguienteNumero,
+      monto: String(datos.monto),
+      fecha_limite: datos.fecha_limite,
+    });
+    return planPagoRepository().save(nueva);
+  }
+
   async actualizarCuota(cuotaId: number, datos: Partial<CuotaInput>) {
     const cuota = await planPagoRepository().findOneBy({ id: cuotaId });
     if (!cuota) {
       throw new AppError("Cuota no encontrada", 404);
+    }
+
+    const evento = await eventoRepository().findOneBy({ id: cuota.id_evento });
+    if (!evento) {
+      throw new AppError("Evento no encontrado", 404);
+    }
+    verificarEventoActivo(evento);
+
+    if (datos.monto !== undefined) {
+      if (evento.presupuesto_estimado != null) {
+        const otrasCuotas = await planPagoRepository().find({ where: { id_evento: cuota.id_evento } });
+        const totalOtras = otrasCuotas
+          .filter((c) => c.id !== cuotaId)
+          .reduce((acc, c) => acc + Number(c.monto), 0);
+        const presupuesto = Number(evento.presupuesto_estimado);
+        const disponible = presupuesto - totalOtras;
+        if (Number(datos.monto) > disponible) {
+          throw new AppError(
+            `El monto (${Number(datos.monto).toFixed(2)}) supera el presupuesto disponible (${disponible.toFixed(2)})`,
+            400
+          );
+        }
+      }
     }
 
     Object.assign(cuota, datos);
